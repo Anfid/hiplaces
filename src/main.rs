@@ -1,7 +1,8 @@
 #[macro_use]
 extern crate diesel;
 
-use actix_web::{middleware::Logger, web::Data, App, HttpServer};
+use actix_cors::Cors;
+use actix_web::{middleware::Logger, App, HttpServer, http::header::{CONTENT_TYPE, AUTHORIZATION}};
 use std::{convert::Into, env};
 
 mod app;
@@ -23,31 +24,30 @@ async fn main() -> Result<()> {
     }
     env_logger::init();
 
-    //let frontend_origin = env::var("FRONTEND_ORIGIN").ok();
+    let frontend_origin = env::var("FRONTEND_ORIGIN").ok();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let bind_address = env::var("BIND_ADDRESS").expect("BIND_ADDRESS is not set");
 
     let db = Database::init(database_url)?;
 
     let server = HttpServer::new(move || {
-        /*
         let cors = match frontend_origin {
             Some(ref origin) => Cors::new()
                 .allowed_origin(origin)
                 .allowed_headers(vec![AUTHORIZATION, CONTENT_TYPE])
-                .max_age(3600),
+                .max_age(3600)
+                .finish(),
             None => Cors::new()
-                .allowed_origin("*")
                 .send_wildcard()
                 .allowed_headers(vec![AUTHORIZATION, CONTENT_TYPE])
-                .max_age(3600),
+                .max_age(3600)
+                .finish(),
         };
-        */
 
         App::new()
             .data(AppState { db: db.clone() })
             .wrap(Logger::default())
-            //.wrap(cors)
+            .wrap(cors)
             .configure(app::routes)
     })
     .bind(&bind_address)
