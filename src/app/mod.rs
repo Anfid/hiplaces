@@ -14,7 +14,7 @@ async fn api(_state: Data<AppState>, _req: HttpRequest) -> &'static str {
 }
 
 pub fn routes(app: &mut web::ServiceConfig) {
-    app.service(web::resource("/").to(api)).service(
+    app.service(web::resource("/").route(web::get().to(api))).service(
         web::scope("/api/v1")
             // User routes
             .service(web::resource("users").route(web::post().to(users::register)))
