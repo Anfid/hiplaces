@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate lazy_static;
 
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, App, HttpServer, http::header::{CONTENT_TYPE, AUTHORIZATION}};
@@ -10,6 +12,7 @@ mod db;
 mod models;
 mod result;
 mod schema;
+mod util;
 
 use app::AppState;
 use db::Database;

@@ -3,6 +3,8 @@ use diesel::{
     r2d2::PoolError,
     result::{DatabaseErrorKind as DieselDatabaseErrorKind, Error as DieselError},
 };
+use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
+use libreauth::pass::ErrorCode as PassErrorCode;
 use serde_json::{json, Map as JsonMap, Value as JsonValue};
 use std::io::Error as IoError;
 use thiserror::Error;
@@ -26,8 +28,11 @@ pub enum Error {
         kind: DatabaseErrorKind,
         description: String,
     },
+    #[error("Authorization error: {0}")]
+    Authorization(String),
     #[error("{0}")]
     Io(IoError),
+    #[allow(unused)]
     #[error("Not Implemented")]
     NotImplemented,
 }
@@ -76,6 +81,25 @@ impl From<DieselError> for Error {
     }
 }
 
+impl From<PassErrorCode> for Error {
+    fn from(_e: PassErrorCode) -> Self {
+        Error::Database {
+            kind: DatabaseErrorKind::Other,
+            description: String::from("libreauth password error"),
+        }
+    }
+}
+
+impl From<JwtError> for Error {
+    fn from(error: JwtError) -> Self {
+        match error.kind() {
+            JwtErrorKind::InvalidToken => Error::Authorization(String::from("Token is invalid")),
+            JwtErrorKind::InvalidIssuer => Error::Authorization(String::from("Issuer is invalid")),
+            _ => Error::Authorization(String::from("An issue was found with the token provided")),
+        }
+    }
+}
+
 impl From<Error> for HttpError {
     fn from(e: Error) -> HttpError {
         match e {
@@ -87,6 +111,9 @@ impl From<Error> for HttpError {
                 _ => HttpError::InternalServerError,
             },
             Error::Io(_) => HttpError::InternalServerError,
+            Error::Authorization(description) => {
+                HttpError::Unauthorized(json!({ "error": description }))
+            }
             Error::NotImplemented => HttpError::NotImplemented,
         }
     }
@@ -94,7 +121,10 @@ impl From<Error> for HttpError {
 
 #[derive(Debug, Error)]
 pub enum HttpError {
-    //404
+    // 401
+    #[error("Unauthorized: {0}")]
+    Unauthorized(JsonValue),
+    // 404
     #[error("Not Found")]
     NotFound,
     // 422
@@ -111,6 +141,7 @@ pub enum HttpError {
 impl HttpError {
     fn to_json(&self) -> JsonValue {
         match self {
+            HttpError::Unauthorized(json) => json.clone(),
             HttpError::UnprocessableEntity(json) => json.clone(),
             _ => {
                 let message = self.to_string();
@@ -123,13 +154,12 @@ impl HttpError {
 impl ResponseError for HttpError {
     fn error_response(&self) -> HttpResponse {
         match self {
+            HttpError::Unauthorized(_) => HttpResponse::Unauthorized().json(self.to_json()),
             HttpError::NotFound => HttpResponse::NotFound().json(self.to_json()),
             HttpError::UnprocessableEntity(_) => {
                 HttpResponse::UnprocessableEntity().json(self.to_json())
             }
-            HttpError::InternalServerError => {
-                HttpResponse::InternalServerError().finish()
-            }
+            HttpError::InternalServerError => HttpResponse::InternalServerError().finish(),
             HttpError::NotImplemented => HttpResponse::NotImplemented().json(self.to_json()),
         }
     }

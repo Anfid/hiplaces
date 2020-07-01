@@ -1,6 +1,6 @@
 use actix_web::{web, web::Data, HttpRequest};
 
-mod users;
+pub mod users;
 mod locations;
 
 use crate::db::Database;
@@ -10,7 +10,7 @@ pub struct AppState {
 }
 
 async fn api(_state: Data<AppState>, _req: HttpRequest) -> &'static str {
-    "Hello, World"
+    "TODO: API description"
 }
 
 pub fn routes(app: &mut web::ServiceConfig) {
