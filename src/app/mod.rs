@@ -21,6 +21,7 @@ pub fn routes(app: &mut web::ServiceConfig) {
             .service(web::resource("users/login").route(web::post().to(users::login)))
             .service(
                 web::resource("user")
+                    .wrap(crate::middleware::auth::Auth)
                     .route(web::get().to(users::get_current))
                     .route(web::put().to(users::update)),
             )

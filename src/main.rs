@@ -2,13 +2,20 @@
 extern crate diesel;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 
 use actix_cors::Cors;
-use actix_web::{middleware::Logger, App, HttpServer, http::header::{CONTENT_TYPE, AUTHORIZATION}};
+use actix_web::{
+    http::header::{AUTHORIZATION, CONTENT_TYPE},
+    middleware::Logger,
+    App, HttpServer,
+};
 use std::{convert::Into, env};
 
 mod app;
 mod db;
+mod middleware;
 mod models;
 mod result;
 mod schema;
@@ -56,7 +63,7 @@ async fn main() -> Result<()> {
     .bind(&bind_address)
     .unwrap_or_else(|_| panic!("Could not bind server to address {}", &bind_address));
 
-    println!("You can access the server at {}", bind_address);
+    info!("You can access the server at {}", bind_address);
 
     server.run().await.map_err(Into::into)
 }

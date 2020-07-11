@@ -38,7 +38,7 @@ pub trait DecodeJwt {
     fn decode_jwt(&self) -> Result<TokenData<Claims>>;
 }
 
-impl DecodeJwt for String {
+impl DecodeJwt for &str {
     fn decode_jwt(&self) -> Result<TokenData<Claims>> {
         decode::<Claims>(
             &self,
