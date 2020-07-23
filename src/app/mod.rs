@@ -18,16 +18,16 @@ Errors have the following format:
 ```json
 {
   "error": {
-    "<error_type>": <error_data>
+    "kind": "<error_kind>"
+    "info": <error_data>
   }
 }
 ```
 
-Possible `error_type` variants and structure of corresponding `error_data`:
-* "already_exists": string
-* "not_found": string
+Possible `error_kind` variants and structure of corresponding `error_data`:
+* "already_exists": none
+* "not_found": none
 * "field_validation": [ "<field_name>": <field_error>, ..." ]
-* "authorization": string
 
 `field_error` structure:
 

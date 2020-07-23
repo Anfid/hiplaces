@@ -16,7 +16,7 @@ use std::collections::HashMap;
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(rename = "error")]
+#[serde(tag = "kind", content = "info")]
 #[serde(rename_all = "snake_case")]
 pub enum Error {
     #[error("Entity already exists")]
