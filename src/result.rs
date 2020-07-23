@@ -3,144 +3,114 @@ use diesel::{
     r2d2::PoolError,
     result::{DatabaseErrorKind as DieselDatabaseErrorKind, Error as DieselError},
 };
-use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
+use jsonwebtoken::errors::Error as JwtError;
 use libreauth::pass::ErrorCode as PassErrorCode;
 use serde_derive::Serialize;
-use serde_json::json;
+use serde_json::{json, Value as JsonValue};
 use std::io::Error as IoError;
 use thiserror::Error;
-use validator::ValidationErrors;
+use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
+
+use std::collections::HashMap;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Serialize)]
+#[serde(rename = "error")]
+#[serde(rename_all = "snake_case")]
 pub enum Error {
-    #[error("Database error: {description}")]
-    Database {
-        kind: DatabaseErrorKind,
-        description: String,
-    },
+    #[error("Entity already exists")]
+    AlreadyExists,
+    #[error("Entity not found")]
+    NotFound,
     #[error("Validation error")]
-    Validation(Vec<ValidationError>),
-    #[error("Authorization error: {0}")]
-    Authorization(String),
-    #[error("{0}")]
-    Io(IoError),
+    FieldValidation(HashMap<&'static str, Vec<ValidationError>>),
+    #[error("Authorization error")]
+    Authorization,
+    #[error("Internal server error")]
+    Internal,
     #[allow(unused)]
     #[error("Not Implemented")]
     NotImplemented,
 }
 
-#[derive(Debug)]
-pub enum DatabaseErrorKind {
-    UniqueViolation,
-    NotFound,
-    Pool,
-    Other,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ValidationError {
-    field: String,
-    errors: Vec<String>,
+impl Error {
+    fn to_json(&self) -> JsonValue {
+        json!({ "error": self })
+    }
 }
 
 impl From<PoolError> for Error {
     fn from(e: PoolError) -> Error {
-        Error::Database {
-            kind: DatabaseErrorKind::Pool,
-            description: e.to_string(),
-        }
+        error!("{}", e);
+        Error::Internal
     }
 }
 
 impl From<IoError> for Error {
     fn from(e: IoError) -> Error {
-        Error::Io(e)
+        error!("{}", e);
+        Error::Internal
     }
 }
 
 impl From<DieselError> for Error {
     fn from(error: DieselError) -> Self {
         match error {
-            DieselError::DatabaseError(ref kind, ref info) => {
-                if let DieselDatabaseErrorKind::UniqueViolation = kind {
-                    let message = info.details().unwrap_or_else(|| info.message()).to_string();
-                    Error::Database {
-                        kind: DatabaseErrorKind::UniqueViolation,
-                        description: message,
-                    }
-                } else {
-                    Error::Database {
-                        kind: DatabaseErrorKind::Other,
-                        description: error.to_string(),
-                    }
-                }
+            DieselError::NotFound => Error::NotFound,
+            DieselError::DatabaseError(DieselDatabaseErrorKind::UniqueViolation, _) => {
+                Error::AlreadyExists
             }
-            DieselError::NotFound => Error::Database {
-                kind: DatabaseErrorKind::NotFound,
-                description: String::from("Entity not found"),
-            },
-            _ => Error::Database {
-                kind: DatabaseErrorKind::Other,
-                description: error.to_string(),
-            },
+            _ => {
+                error!("{}", error);
+                Error::Internal
+            }
         }
     }
 }
 
 impl From<PassErrorCode> for Error {
-    fn from(_e: PassErrorCode) -> Self {
-        Error::Database {
-            kind: DatabaseErrorKind::Other,
-            description: String::from("libreauth password error"),
-        }
+    fn from(e: PassErrorCode) -> Self {
+        error!("libreauth: {:?}", e);
+        Error::Internal
     }
 }
 
+// TODO: Add specific error variants if needed
 impl From<JwtError> for Error {
     fn from(error: JwtError) -> Self {
-        match error.kind() {
-            JwtErrorKind::InvalidToken => Error::Authorization(String::from("Token is invalid")),
-            JwtErrorKind::InvalidIssuer => Error::Authorization(String::from("Issuer is invalid")),
-            _ => Error::Authorization(String::from("An issue was found with the token provided")),
-        }
+        info!("Jwt error: {}", error);
+        Error::Authorization
+    }
+}
+
+impl From<ValidationErrors> for Error {
+    fn from(errors: ValidationErrors) -> Error {
+        Error::FieldValidation(
+            errors
+                .into_errors()
+                .into_iter()
+                .filter_map(|(k, v)| {
+                    if let ValidationErrorsKind::Field(errors) = v {
+                        Some((k, errors))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        )
     }
 }
 
 impl ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
         match self {
-            Error::Database { kind, description } => match kind {
-                DatabaseErrorKind::UniqueViolation => {
-                    HttpResponse::Ok().json(json!({ "errors": [description] }))
-                }
-                DatabaseErrorKind::NotFound => {
-                    HttpResponse::Ok().json(json!({ "errors": [description] }))
-                }
-                _ => HttpResponse::InternalServerError().finish(),
-            },
-            Error::Io(_) => HttpResponse::InternalServerError().finish(),
-            Error::Validation(errs) => HttpResponse::Ok().json(json!({ "errors": errs })),
-            Error::Authorization(description) => {
-                HttpResponse::Unauthorized().json(json!({ "errors": [description] }))
-            }
+            Error::AlreadyExists => HttpResponse::Ok().json(self.to_json()),
+            Error::NotFound => HttpResponse::Ok().json(self.to_json()),
+            Error::FieldValidation(_) => HttpResponse::Ok().json(self.to_json()),
+            Error::Authorization => HttpResponse::Unauthorized().finish(),
+            Error::Internal => HttpResponse::InternalServerError().finish(),
             Error::NotImplemented => HttpResponse::NotImplemented().finish(),
         }
-    }
-}
-
-impl From<ValidationErrors> for Error {
-    fn from(errors: ValidationErrors) -> Error {
-        let e = errors
-            .field_errors()
-            .iter()
-            .map(|(k, v)| ValidationError {
-                field: k.to_string(),
-                errors: v.iter().map(|e| e.to_string()).collect(),
-            })
-            .collect();
-
-        Error::Validation(e)
     }
 }

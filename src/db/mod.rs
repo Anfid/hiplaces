@@ -60,7 +60,7 @@ impl Database {
                 Ok(stored_user.into())
             }
         } else {
-            Err(Error::Authorization(String::from("Invalid password")))
+            Err(Error::Authorization)
         }
     }
 }
