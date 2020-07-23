@@ -5,13 +5,31 @@ use diesel::{
 };
 use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
 use libreauth::pass::ErrorCode as PassErrorCode;
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_derive::Serialize;
+use serde_json::json;
 use std::io::Error as IoError;
 use thiserror::Error;
 use validator::ValidationErrors;
 
 pub type Result<T> = std::result::Result<T, Error>;
-pub type HttpResult<T> = std::result::Result<T, HttpError>;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Database error: {description}")]
+    Database {
+        kind: DatabaseErrorKind,
+        description: String,
+    },
+    #[error("Validation error")]
+    Validation(Vec<ValidationError>),
+    #[error("Authorization error: {0}")]
+    Authorization(String),
+    #[error("{0}")]
+    Io(IoError),
+    #[allow(unused)]
+    #[error("Not Implemented")]
+    NotImplemented,
+}
 
 #[derive(Debug)]
 pub enum DatabaseErrorKind {
@@ -21,20 +39,10 @@ pub enum DatabaseErrorKind {
     Other,
 }
 
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("Database error: {description}")]
-    Database {
-        kind: DatabaseErrorKind,
-        description: String,
-    },
-    #[error("Authorization error: {0}")]
-    Authorization(String),
-    #[error("{0}")]
-    Io(IoError),
-    #[allow(unused)]
-    #[error("Not Implemented")]
-    NotImplemented,
+#[derive(Debug, Serialize)]
+pub struct ValidationError {
+    field: String,
+    errors: Vec<String>,
 }
 
 impl From<PoolError> for Error {
@@ -100,82 +108,39 @@ impl From<JwtError> for Error {
     }
 }
 
-impl From<Error> for HttpError {
-    fn from(e: Error) -> HttpError {
-        match e {
-            Error::Database { kind, description } => match kind {
-                DatabaseErrorKind::UniqueViolation => {
-                    HttpError::UnprocessableEntity(json!({ "error": description }))
-                }
-                DatabaseErrorKind::NotFound => HttpError::NotFound,
-                _ => HttpError::InternalServerError,
-            },
-            Error::Io(_) => HttpError::InternalServerError,
-            Error::Authorization(description) => {
-                HttpError::Unauthorized(json!({ "error": description }))
-            }
-            Error::NotImplemented => HttpError::NotImplemented,
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum HttpError {
-    // 401
-    #[error("Unauthorized: {0}")]
-    Unauthorized(JsonValue),
-    // 404
-    #[error("Not Found")]
-    NotFound,
-    // 422
-    #[error("Unprocessable Entity: {0}")]
-    UnprocessableEntity(JsonValue),
-    // 500
-    #[error("Internal Server Error")]
-    InternalServerError,
-    // 501
-    #[error("Not Implemented")]
-    NotImplemented,
-}
-
-impl HttpError {
-    fn to_json(&self) -> JsonValue {
-        match self {
-            HttpError::Unauthorized(json) => json.clone(),
-            HttpError::UnprocessableEntity(json) => json.clone(),
-            _ => {
-                let message = self.to_string();
-                json!({ "error": message })
-            }
-        }
-    }
-}
-
-impl ResponseError for HttpError {
+impl ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
         match self {
-            HttpError::Unauthorized(_) => HttpResponse::Unauthorized().json(self.to_json()),
-            HttpError::NotFound => HttpResponse::NotFound().json(self.to_json()),
-            HttpError::UnprocessableEntity(_) => {
-                HttpResponse::UnprocessableEntity().json(self.to_json())
+            Error::Database { kind, description } => match kind {
+                DatabaseErrorKind::UniqueViolation => {
+                    HttpResponse::Ok().json(json!({ "errors": [description] }))
+                }
+                DatabaseErrorKind::NotFound => {
+                    HttpResponse::Ok().json(json!({ "errors": [description] }))
+                }
+                _ => HttpResponse::InternalServerError().finish(),
+            },
+            Error::Io(_) => HttpResponse::InternalServerError().finish(),
+            Error::Validation(errs) => HttpResponse::Ok().json(json!({ "errors": errs })),
+            Error::Authorization(description) => {
+                HttpResponse::Unauthorized().json(json!({ "errors": [description] }))
             }
-            HttpError::InternalServerError => HttpResponse::InternalServerError().finish(),
-            HttpError::NotImplemented => HttpResponse::NotImplemented().json(self.to_json()),
+            Error::NotImplemented => HttpResponse::NotImplemented().finish(),
         }
     }
 }
 
-impl From<ValidationErrors> for HttpError {
-    fn from(errors: ValidationErrors) -> Self {
-        let mut err_map = JsonMap::new();
+impl From<ValidationErrors> for Error {
+    fn from(errors: ValidationErrors) -> Error {
+        let e = errors
+            .field_errors()
+            .iter()
+            .map(|(k, v)| ValidationError {
+                field: k.to_string(),
+                errors: v.iter().map(|e| e.to_string()).collect(),
+            })
+            .collect();
 
-        for (field, errors) in errors.field_errors().iter() {
-            let errors: Vec<JsonValue> = errors.iter().map(|error| json!(error.message)).collect();
-            err_map.insert(field.to_string(), json!(errors));
-        }
-
-        HttpError::UnprocessableEntity(json!({
-            "errors": err_map,
-        }))
+        Error::Validation(e)
     }
 }

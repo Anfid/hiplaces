@@ -9,7 +9,7 @@ use validator_derive::Validate;
 
 use super::AppState;
 use crate::models;
-use crate::result::{HttpError, HttpResult};
+use crate::result::{Error, Result};
 use crate::util::{GenerateJwt, HASHER};
 
 #[derive(Serialize)]
@@ -56,7 +56,7 @@ impl From<RegisterUser> for models::user::NewUser {
     }
 }
 
-pub async fn register(state: Data<AppState>, form: Json<RegisterUser>) -> HttpResult<HttpResponse> {
+pub async fn register(state: Data<AppState>, form: Json<RegisterUser>) -> Result<HttpResponse> {
     let user = form.into_inner();
     user.validate()?;
     match state.db.register_user(user.into()) {
@@ -65,7 +65,7 @@ pub async fn register(state: Data<AppState>, form: Json<RegisterUser>) -> HttpRe
     }
 }
 
-pub async fn login(state: Data<AppState>, form: Json<LoginUser>) -> HttpResult<HttpResponse> {
+pub async fn login(state: Data<AppState>, form: Json<LoginUser>) -> Result<HttpResponse> {
     let user = form.into_inner();
     user.validate()?;
     match state.db.login_user(user) {
@@ -74,10 +74,10 @@ pub async fn login(state: Data<AppState>, form: Json<LoginUser>) -> HttpResult<H
     }
 }
 
-pub async fn update(_state: Data<AppState>, _req: HttpRequest) -> HttpResult<HttpResponse> {
-    Err(HttpError::NotImplemented)
+pub async fn update(_state: Data<AppState>, _req: HttpRequest) -> Result<HttpResponse> {
+    Err(Error::NotImplemented)
 }
 
-pub async fn get_current(_state: Data<AppState>, _req: HttpRequest) -> HttpResult<HttpResponse> {
-    Err(HttpError::NotImplemented)
+pub async fn get_current(_state: Data<AppState>, _req: HttpRequest) -> Result<HttpResponse> {
+    Err(Error::NotImplemented)
 }
