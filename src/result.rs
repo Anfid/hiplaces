@@ -108,7 +108,7 @@ impl ResponseError for Error {
             Error::AlreadyExists => HttpResponse::Ok().json(self.to_json()),
             Error::NotFound => HttpResponse::Ok().json(self.to_json()),
             Error::FieldValidation(_) => HttpResponse::Ok().json(self.to_json()),
-            Error::Authorization => HttpResponse::Unauthorized().finish(),
+            Error::Authorization => HttpResponse::Ok().json(self.to_json()),
             Error::Internal => HttpResponse::InternalServerError().finish(),
             Error::NotImplemented => HttpResponse::NotImplemented().finish(),
         }

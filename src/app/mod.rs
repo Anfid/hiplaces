@@ -27,6 +27,7 @@ Errors have the following format:
 Possible `error_kind` variants and structure of corresponding `error_data`:
 * "already_exists": none
 * "not_found": none
+* "authorization": none
 * "field_validation": [ "<field_name>": <field_error>, ..." ]
 
 `field_error` structure:

@@ -39,9 +39,8 @@ pub struct RegisterUser {
     pub password: String,
 }
 
-#[derive(Debug, Validate, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct LoginUser {
-    #[validate(length(min = 1, max = 20, message = "invalid username"))]
     pub username: String,
     pub password: String,
 }
@@ -67,10 +66,10 @@ pub async fn register(state: Data<AppState>, form: Json<RegisterUser>) -> Result
 
 pub async fn login(state: Data<AppState>, form: Json<LoginUser>) -> Result<HttpResponse> {
     let user = form.into_inner();
-    user.validate()?;
     match state.db.login_user(user) {
         Ok(user) => Ok(HttpResponse::Ok().json(UserResponse::from(user))),
-        Err(e) => Err(e.into()),
+        Err(Error::NotFound) => Err(Error::Authorization),
+        Err(e) => Err(e),
     }
 }
 
