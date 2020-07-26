@@ -31,11 +31,11 @@ impl From<models::user::User> for UserResponse {
 
 #[derive(Debug, Validate, Deserialize)]
 pub struct RegisterUser {
-    #[validate(length(min = 1, max = 20, message = "invalid username"))]
+    #[validate(length(min = 1, max = 20, message = "Username length is expected to be between 1 and 20 characters"))]
     pub username: String,
-    #[validate(email(message = "invalid email"))]
+    #[validate(email(message = "Invalid email"))]
     pub email: String,
-    #[validate(length(min = 8, max = 128, message = "bad password"))]
+    #[validate(length(min = 8, max = 128, message = "Password length is expected to be between 8 and 128 characters"))]
     pub password: String,
 }
 
