@@ -49,21 +49,19 @@ where
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
-        let identity = req.headers().get(AUTHORIZATION).unwrap().to_str().unwrap();
-        info!("{:?}", identity);
-        let authorized = identity.decode_jwt().is_ok();
+        let auth = req
+            .headers()
+            .get(AUTHORIZATION)
+            .and_then(|auth| auth.to_str().ok())
+            .and_then(|id| id.decode_jwt().ok());
 
-        if !authorized {
-            return Box::pin(async move {
+        if let Some(_token_data) = auth {
+            Box::pin(async move {
                 Ok(req.into_response(HttpResponse::Unauthorized().finish().into_body()))
-            });
+            })
+        } else {
+            let fut = self.service.call(req);
+            Box::pin(async move { fut.await })
         }
-
-        let fut = self.service.call(req);
-
-        Box::pin(async move {
-            let res = fut.await?;
-            Ok(res)
-        })
     }
 }
