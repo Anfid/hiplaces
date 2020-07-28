@@ -56,12 +56,12 @@ where
             .and_then(|id| id.decode_jwt().ok());
 
         if let Some(_token_data) = auth {
+            let fut = self.service.call(req);
+            Box::pin(async move { fut.await })
+        } else {
             Box::pin(async move {
                 Ok(req.into_response(HttpResponse::Unauthorized().finish().into_body()))
             })
-        } else {
-            let fut = self.service.call(req);
-            Box::pin(async move { fut.await })
         }
     }
 }
