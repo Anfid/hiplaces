@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
     let db = Database::init(database_url)?;
 
     let server = HttpServer::new(move || {
-        let cors = /*match frontend_origin {
+        let cors = match frontend_origin {
             Some(ref origin) => Cors::new()
                 .allowed_origin(origin)
                 .allowed_headers(vec![AUTHORIZATION, CONTENT_TYPE])
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
                 .allowed_headers(vec![AUTHORIZATION, CONTENT_TYPE])
                 .max_age(3600)
                 .finish(),
-        }*/ Cors::new().finish();
+        };
 
         App::new()
             .data(AppState { db: db.clone() })
