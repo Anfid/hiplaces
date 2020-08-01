@@ -14,12 +14,11 @@ use actix_web::{
 use std::{convert::Into, env};
 
 mod app;
+mod auth;
 mod db;
-mod middleware;
 mod models;
 mod result;
 mod schema;
-mod util;
 
 use app::AppState;
 use db::Database;

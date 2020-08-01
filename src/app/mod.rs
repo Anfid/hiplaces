@@ -1,6 +1,6 @@
 use actix_web::{web, web::Data, HttpRequest};
 
-mod locations;
+pub mod places;
 pub mod users;
 
 use crate::db::Database;
@@ -22,37 +22,14 @@ pub fn routes(app: &mut web::ServiceConfig) {
                 .service(web::resource("users/login").route(web::post().to(users::login)))
                 .service(
                     web::resource("user")
-                        .wrap(crate::middleware::auth::Auth)
                         .route(web::get().to(users::get_current))
                         .route(web::put().to(users::update)),
-                ),
-                   /*
-                   .service(
-                       web::resource("locations")
-                           .route(web::get().to(locations::list))
-                           .route(web::post().to(locations::create)),
-                   )
-                   .service(
-                       web::resource("locations/{slug}")
-                           .route(web::get().to(locations::get))
-                           .route(web::put().to(locations::update))
-                           .route(web::delete().to(locations::delete)),
-                   )
-                   .service(
-                       web::resource("locations/{slug}/favorite")
-                           .route(web::post().to(locations::favorite))
-                           .route(web::delete().to(locations::unfavorite)),
-                   )
-                   .service(
-                       web::resource("locations/{slug}/comments")
-                           .route(web::get().to(locations::comments::list))
-                           .route(web::post().to(locations::comments::add)),
-                   )
-                   .service(
-                       web::resource("locations/{slug}/comments/{comment_id}")
-                           .route(web::delete().to(locations::comments::delete)),
-                   )
-                   */
+                )
+                .service(
+                    web::resource("place")
+                        .route(web::post().to(places::create)),
+                )
+                .service(web::resource("places").route(web::get().to(places::list))),
         );
 }
 

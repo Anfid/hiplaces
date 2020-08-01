@@ -8,9 +8,9 @@ use validator::Validate;
 use validator_derive::Validate;
 
 use super::AppState;
+use crate::auth::{Claims, GenerateJwt, HASHER};
 use crate::models;
 use crate::result::{Error, Result};
-use crate::util::{GenerateJwt, HASHER};
 
 #[derive(Serialize)]
 struct UserResponse {
@@ -31,11 +31,19 @@ impl From<models::user::User> for UserResponse {
 
 #[derive(Debug, Validate, Deserialize)]
 pub struct RegisterUser {
-    #[validate(length(min = 1, max = 20, message = "Username length is expected to be between 1 and 20 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 20,
+        message = "Username length is expected to be between 1 and 20 characters"
+    ))]
     pub username: String,
     #[validate(email(message = "Invalid email"))]
     pub email: String,
-    #[validate(length(min = 8, max = 128, message = "Password length is expected to be between 8 and 128 characters"))]
+    #[validate(length(
+        min = 8,
+        max = 128,
+        message = "Password length is expected to be between 8 and 128 characters"
+    ))]
     pub password: String,
 }
 
@@ -73,10 +81,18 @@ pub async fn login(state: Data<AppState>, form: Json<LoginUser>) -> Result<HttpR
     }
 }
 
-pub async fn update(_state: Data<AppState>, _req: HttpRequest) -> Result<HttpResponse> {
+pub async fn update(
+    _state: Data<AppState>,
+    _req: HttpRequest,
+    _claims: Claims,
+) -> Result<HttpResponse> {
     Err(Error::NotImplemented)
 }
 
-pub async fn get_current(_state: Data<AppState>, _req: HttpRequest) -> Result<HttpResponse> {
+pub async fn get_current(
+    _state: Data<AppState>,
+    _req: HttpRequest,
+    _claims: Claims,
+) -> Result<HttpResponse> {
     Err(Error::NotImplemented)
 }
