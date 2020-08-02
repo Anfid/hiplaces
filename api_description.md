@@ -4,9 +4,10 @@
 
 ### Request
 
-POST /api/v1/users
+`POST /api/v1/users`
 
-Content-Type: application/json
+Headers:
+`Content-Type: application/json`
 
 ```json
 {
@@ -18,7 +19,7 @@ Content-Type: application/json
 
 ### Response
 
-201 Created
+`201 Created`
 
 ```json
 {
@@ -30,18 +31,21 @@ Content-Type: application/json
 
 ### Errors
 
-* Invalid data -> 200 Ok kind: "field_validation"
-* User already exists -> 200 Ok kind: "already_exists"
-* Internal error -> 500 Internal Server Error
+| Description         | Response                          |
+|---------------------|-----------------------------------|
+| Invalid data        | `200 Ok` kind: "field_validation" |
+| User already exists | `200 Ok` kind: "already_exists"   |
+| Internal error      | `500 Internal Server Error`       |
 
 
 ## Login
 
 ### Request
 
-POST /api/v1/users/login
+`POST /api/v1/users/login`
 
-Content-Type: application/json
+Headers:
+`Content-Type: application/json`
 
 ```json
 {
@@ -52,7 +56,7 @@ Content-Type: application/json
 
 ### Response
 
-200 Ok
+`200 Ok`
 
 ```json
 {
@@ -64,21 +68,24 @@ Content-Type: application/json
 
 ### Errors
 
-* Invalid data -> 200 Ok { "error": { kind: "authorization" } }
-* Internal error -> 500 Internal Server Error
+| Description         | Response                                        |
+|---------------------|-------------------------------------------------|
+| Invalid data        | `200 Ok` { "error": { kind: "authorization" } } |
+| Internal error      | `500 Internal Server Error`                     |
 
 
 ## Get current user data
 
 ### Request
 
-GET /api/v1/user
+`GET /api/v1/user`
 
-Authorization: <token>
+Headers:
+`Authorization: <token>`
 
 ### Response
 
-200 Ok
+`200 Ok`
 
 ```json
 {
@@ -89,22 +96,25 @@ Authorization: <token>
 
 ### Errors
 
-* Bad or missing JWT token -> 401 Unauthorized
-* Internal error -> 500 Internal Server Error
+| Description              | Response                          |
+|--------------------------|-----------------------------------|
+| Bad or missing JWT token | `401 Unauthorized`                |
+| Internal error           | `500 Internal Server Error`       |
 
 
 ## Update current user data
 
 ### Request
 
-PUT /api/v1/user
+`PUT /api/v1/user`
 
-Authorization: <token>
-Content-Type: application/json
+Headers:
+`Authorization: <token>`
+`Content-Type: application/json`
 
 ### Response
 
-200 Ok
+`200 Ok`
 
 ```json
 {
@@ -115,9 +125,11 @@ Content-Type: application/json
 
 ### Errors
 
-* Invalid data -> `200 Ok` kind: "field_validation"
-* Bad or missing JWT token -> 401 Unauthorized
-* Internal error -> 500 Internal Server Error
+| Description              | Response                          |
+|--------------------------|-----------------------------------|
+| Invalid data             | `200 Ok` kind: "field_validation" |
+| Bad or missing JWT token | `401 Unauthorized`                |
+| Internal error           | `500 Internal Server Error`       |
 
 
 
@@ -127,10 +139,11 @@ Content-Type: application/json
 
 ### Request
 
-POST /api/v1/place
+`POST /api/v1/place`
 
-Authorization: <token>
-Content-Type: application/json
+Headers:
+`Authorization: <token>`
+`Content-Type: application/json`
 
 ```json
 {
@@ -141,7 +154,7 @@ Content-Type: application/json
 
 ### Response
 
-201 Created
+`201 Created`
 
 ```json
 {
@@ -152,22 +165,24 @@ Content-Type: application/json
 
 ### Errors
 
-* Internal error -> `500 Internal Server Error`
+| Description    | Response                    |
+|----------------|-----------------------------|
+| Internal error | `500 Internal Server Error` |
 
 
 ## List
 
 ### Request
 
-GET /api/v1/places
+`GET /api/v1/places`
 
-Optional query parameters:
-* offset - positive number; Ignore first `offset` places
-* limit - positive number; Show only `limit` places
+Query:
+* `offset` - positive number; Ignore first `offset` places
+* `limit` - positive number; Show only `limit` places
 
 ### Response
 
-201 Created
+`201 Created`
 
 ```json
 [
@@ -180,7 +195,9 @@ Optional query parameters:
 
 ### Errors
 
-* Internal error -> `500 Internal Server Error`
+| Description    | Response                    |
+|----------------|-----------------------------|
+| Internal error | `500 Internal Server Error` |
 
 
 
