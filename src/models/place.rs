@@ -18,4 +18,5 @@ pub struct Place {
 pub struct NewPlace {
     pub name: String,
     pub info: String,
+    pub created_by: Uuid,
 }

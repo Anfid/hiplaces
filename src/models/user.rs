@@ -20,3 +20,12 @@ pub struct NewUser {
     pub email: String,
     pub password: String,
 }
+
+#[derive(Debug, AsChangeset, Identifiable)]
+#[table_name = "users"]
+pub struct UpdateUser {
+    pub id: Uuid,
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+}

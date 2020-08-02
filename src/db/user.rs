@@ -1,12 +1,20 @@
 use diesel::prelude::*;
 use libreauth::pass::HashBuilder;
 use std::convert::Into;
+use uuid::Uuid;
 
 use super::Database;
 use crate::app::users::LoginUser;
 use crate::auth::{HASHER, PWD_SCHEME_VERSION};
-use crate::models::user::{NewUser, User};
+use crate::models::user::*;
 use crate::result::{Error, Result};
+
+#[allow(unused)]
+pub enum UserIdentifier {
+    Uuid(Uuid),
+    Username(String),
+    Email(String),
+}
 
 impl Database {
     pub fn register_user(&self, user: NewUser) -> Result<User> {
@@ -31,18 +39,46 @@ impl Database {
         if checker.is_valid(&user.password) {
             if checker.needs_update(Some(PWD_SCHEME_VERSION)) {
                 let new_password = HASHER.hash(&user.password)?;
-                match diesel::update(users.find(stored_user.id))
+                diesel::update(users.find(stored_user.id))
                     .set(password.eq(new_password))
                     .get_result::<User>(conn)
-                {
-                    Ok(user) => Ok(user.into()),
-                    Err(e) => Err(e.into()),
-                }
+                    .map_err(Into::into)
             } else {
-                Ok(stored_user.into())
+                Ok(stored_user)
             }
         } else {
             Err(Error::Authorization)
+        }
+    }
+
+    pub fn update_user(&self, user: UpdateUser) -> Result<User> {
+        let conn = self.pool.get()?;
+
+        diesel::update(&user)
+            .set(&user)
+            .get_result::<User>(&conn)
+            .map_err(Into::into)
+    }
+
+    pub fn get_user(&self, user_id: UserIdentifier) -> Result<User> {
+        use crate::schema::users::dsl::*;
+        use UserIdentifier::*;
+
+        let conn = self.pool.get()?;
+
+        match user_id {
+            Uuid(uid) => users
+                .filter(id.eq(uid))
+                .get_result::<User>(&conn)
+                .map_err(Into::into),
+            Username(n) => users
+                .filter(username.eq(n))
+                .get_result::<User>(&conn)
+                .map_err(Into::into),
+            Email(e) => users
+                .filter(email.eq(e))
+                .get_result::<User>(&conn)
+                .map_err(Into::into),
         }
     }
 }

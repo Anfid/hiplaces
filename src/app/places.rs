@@ -1,5 +1,5 @@
 use actix_web::{
-    web::{Data, Json},
+    web::{Data, Json, Query},
     HttpResponse,
 };
 use serde_derive::{Deserialize, Serialize};
@@ -7,7 +7,7 @@ use serde_derive::{Deserialize, Serialize};
 use super::AppState;
 use crate::auth::Claims;
 use crate::models;
-use crate::result::{Error, Result};
+use crate::result::Result;
 
 #[derive(Serialize)]
 struct PlaceResponse {
@@ -27,21 +27,13 @@ impl From<models::place::Place> for PlaceResponse {
 #[derive(Debug, Deserialize)]
 pub struct CreatePlace {
     name: String,
-    text: String,
+    info: String,
 }
 
 #[derive(Deserialize)]
-pub struct GetPlace {
-    name: String,
-}
-
-impl From<CreatePlace> for models::place::NewPlace {
-    fn from(place: CreatePlace) -> models::place::NewPlace {
-        models::place::NewPlace {
-            name: place.name,
-            info: place.text,
-        }
-    }
+pub struct GetPlacesQuery {
+    offset: Option<usize>,
+    limit: Option<usize>,
 }
 
 // TODOs:
@@ -49,20 +41,33 @@ impl From<CreatePlace> for models::place::NewPlace {
 // * Image view
 pub async fn create(
     state: Data<AppState>,
-    place: Json<CreatePlace>,
-    _claims: Claims,
+    claims: Claims,
+    Json(place): Json<CreatePlace>,
 ) -> Result<HttpResponse> {
-    let place = place.into_inner();
     state
         .db
-        .new_place(place.into())
-        .map(|place| HttpResponse::Ok().json(PlaceResponse::from(place)))
+        .new_place(models::place::NewPlace {
+            name: place.name,
+            info: place.info,
+            created_by: claims.id,
+        })
+        .map(|place| HttpResponse::Created().json(PlaceResponse::from(place)))
 }
 
-pub async fn list(state: Data<AppState>, place: Json<GetPlace>) -> Result<HttpResponse> {
-    let place = place.into_inner();
-    match state.db.get_place(place.name) {
-        Ok(place) => Ok(HttpResponse::Ok().json(PlaceResponse::from(place))),
+pub async fn list(
+    state: Data<AppState>,
+    Query(query): Query<GetPlacesQuery>,
+) -> Result<HttpResponse> {
+    match state.db.get_places(
+        query.offset.unwrap_or(0) as i64,
+        query.limit.map(|n| n as i64),
+    ) {
+        Ok(places) => Ok(HttpResponse::Ok().json(
+            places
+                .into_iter()
+                .map(PlaceResponse::from)
+                .collect::<Vec<_>>(),
+        )),
         Err(e) => Err(e),
     }
 }

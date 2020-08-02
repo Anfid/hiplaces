@@ -3,7 +3,7 @@ use std::convert::Into;
 
 use super::Database;
 use crate::models::place::{NewPlace, Place};
-use crate::result::{Error, Result};
+use crate::result::Result;
 
 impl Database {
     pub fn new_place(&self, place: NewPlace) -> Result<Place> {
@@ -17,12 +17,17 @@ impl Database {
             .map_err(Into::into)
     }
 
-    pub fn get_place(&self, place_name: String) -> Result<Place> {
+    pub fn get_places(&self, offset: i64, limit: Option<i64>) -> Result<Vec<Place>> {
         use crate::schema::places::dsl::*;
 
         let conn = &self.pool.get()?;
 
-        let _place: Place = places.filter(name.eq(place_name)).first(conn)?;
-        Err(Error::NotImplemented)
+        let mut res = places.offset(offset).into_boxed();
+
+        if let Some(limit) = limit {
+            res = places.limit(limit).into_boxed();
+        }
+
+        res.load::<Place>(conn).map_err(Into::into)
     }
 }
